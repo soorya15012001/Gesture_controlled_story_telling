@@ -36,6 +36,9 @@ def trendline(index,data, order=1):
 
 play = True
 prevPlay = play
+prevXY = np.array([0.0,0.0])
+XY = prevXY
+unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
 
 def gesture(image):
     mp_drawing = mp.solutions.drawing_utils
@@ -43,6 +46,9 @@ def gesture(image):
 
     global prevPlay
     global play
+    global XY
+    global prevXY
+    global unitVector
 
     with mp_hands.Hands( min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
         image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
@@ -66,7 +72,30 @@ def gesture(image):
                 # print("LANDMARK ", landmark_list[16][1], landmark_list[15][1], landmark_list[14][1],  landmark_list[13][1], (landmark_list[16][1] < landmark_list[15][1] < landmark_list[14][1] < landmark_list[13][1]))
                 # print("LANDMARK ", landmark_list[20][1], landmark_list[19][1], landmark_list[18][1],  landmark_list[17][1], (landmark_list[20][1] < landmark_list[19][1] < landmark_list[18][1] < landmark_list[17][1]))
 
+                #ROTATION
+                if (landmark_list[8][1] < landmark_list[7][1] < landmark_list[6][1] < landmark_list[5][1]) and \
+                (landmark_list[12][1] < landmark_list[11][1] < landmark_list[10][1] < landmark_list[9][1]):
+                    print("rotate")
+                    XY = np.array([landmark_list[12][0],landmark_list[12][1]])
+                    unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                    prevXY = XY
+                    print(unitVector)
 
+                #TRANSLATION
+                if (landmark_list[8][1] < landmark_list[7][1] < landmark_list[6][1] < landmark_list[5][1]) and \
+                    not (landmark_list[12][1] < landmark_list[11][1] < landmark_list[10][1] < landmark_list[9][1]):
+                    print("translate")
+                    XY = np.array([landmark_list[8][0],landmark_list[8][1]])
+                    unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                    prevXY = XY
+                    print(unitVector)
+                #ZOOM
+
+
+
+
+
+                #PLAY/PAUSE
                 if (landmark_list[4][1] < landmark_list[3][1] < landmark_list[2][1] < landmark_list[1][1]) and \
                 (landmark_list[8][1] < landmark_list[7][1] < landmark_list[6][1] < landmark_list[5][1]) and \
                 (landmark_list[12][1] < landmark_list[11][1] < landmark_list[10][1] < landmark_list[9][1]) and \
