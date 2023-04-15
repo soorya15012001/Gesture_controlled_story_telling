@@ -4,7 +4,6 @@ from imutils.video import VideoStream
 from flask import Response
 from flask import Flask
 from flask import render_template,  session
-from flask_socketio import SocketIO, emit
 from threading import Lock
 
 import threading
@@ -14,6 +13,9 @@ import imutils
 import time
 import json
 import cv2
+from flask import Flask, render_template
+from flask_socketio import SocketIO
+
 
 async_mode=None
 
@@ -21,13 +23,14 @@ outputFrame = None
 lock = threading.Lock()
 thread = None
 app = Flask(__name__)
-socketio = SocketIO(app, async_mode=async_mode)
+socketio = SocketIO(app)
+
 vs = VideoStream(src=0).start()
 time.sleep(2.0)
 
 @app.route("/")
 def index():
-    return render_template("index.html", async_mode=socketio.async_mode)
+    return render_template("index.html")
 
 import mediapipe as mp
 import numpy as np
@@ -97,7 +100,7 @@ def gesture(image):
                             (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
                             not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]) and \
                             not (left_hand_landmarks[12][1] < left_hand_landmarks[11][1] < left_hand_landmarks[10][1] < left_hand_landmarks[9][1]):
-                        distance = int((np.linalg.norm(np.array(left_hand_landmarks[8]) - np.array(right_hand_landmarks[8]))) * 50)
+                        distance = int((np.linalg.norm(np.array(left_hand_landmarks[8]) - np.array(right_hand_landmarks[8]))) * 30)
                         if prevDistance is None:
                             prevDistance = distance
                         else:
@@ -108,6 +111,8 @@ def gesture(image):
                             elif (prevDistance == distance):
                                 toZoom = None
                             prevDistance = distance
+                            
+
                     if ((left_hand_landmarks[4][1] < left_hand_landmarks[3][1] < left_hand_landmarks[2][1] < left_hand_landmarks[1][1]) and \
                             (left_hand_landmarks[8][1] < left_hand_landmarks[7][1] < left_hand_landmarks[6][1] < left_hand_landmarks[5][1]) and \
                             (left_hand_landmarks[12][1] < left_hand_landmarks[11][1] < left_hand_landmarks[10][1] < left_hand_landmarks[9][1]) and \
@@ -170,25 +175,22 @@ def gesture(image):
     print(api_packet)
     return image, api_packet
 
-def detect_motion():
+
+
+@socketio.on('get_dictionary')
+def detect_motion(frameCount):
     global vs, outputFrame, lock
 
     while True:
-        socketio.sleep(0)
         image = vs.read()
         image,api_packet = gesture(image)
 
         with lock:
             outputFrame = image.copy()
-        socketio.emit('api_packet', json.dumps(api_packet))
+            
+        socketio.emit('dictionary', api_packet)
 
 
-@socketio.event
-def connect():
-    global thread
-    with lock:
-        if thread is None:
-            thread = socketio.start_background_task(detect_motion)
 
 
 def generate():
@@ -209,16 +211,20 @@ def video_feed():
         mimetype = "multipart/x-mixed-replace; boundary=frame")
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser() 
     ap.add_argument("-i", "--ip", type=str, required=True, default="0.0.0.0",
         help="ip address of the device")
-    ap.add_argument("-o", "--port", type=int, required=True, default="8000",
+    ap.add_argument("-o", "--port", type=int, required=True, default="5500",
         help="ephemeral port number of the server (1024 to 65535)")
     ap.add_argument("-f", "--frame-count", type=int, default=32,
         help="# of frames used to construct the background model")
     args = vars(ap.parse_args())
-    t = threading.Thread(target=detect_motion)
+    t = threading.Thread(target=detect_motion, args=(
+        args["frame_count"],))
     t.daemon = True
     t.start()
-    socketio.run(app, host=args["ip"], port=args["port"], debug=True)
+    app.run(host=args["ip"], port=args["port"], debug=True,
+        threaded=True, use_reloader=False)
+    # socketio.run(app, host='0.0.0.0', port=8000, debug=True)
+
 vs.stop()
