@@ -39,6 +39,9 @@ prevPlay = play
 prevXY = np.array([0.0,0.0])
 XY = prevXY
 unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+prevDistance = None
+distance = prevDistance
+toZoom = "#"
 
 def gesture(image):
     mp_drawing = mp.solutions.drawing_utils
@@ -49,6 +52,9 @@ def gesture(image):
     global XY
     global prevXY
     global unitVector
+    global prevDistance
+    global distance
+    global toZoom
 
     with mp_hands.Hands( min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
         image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
@@ -59,70 +65,93 @@ def gesture(image):
         # if the hand is detected
 
         if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
+
+            left_hand_landmarks = []
+            right_hand_landmarks = []
+
+            for hand_landmarks, hand_type in zip(results.multi_hand_landmarks,results.multi_handedness):
             # get the landmark coordinates
                 landmark_list = []
                 for idx, landmark in enumerate(hand_landmarks.landmark):
                     landmark_list.append((landmark.x, landmark.y, landmark.z))
 
-                # check if all 5 fingertips are open
-                # print("LANDMARK ", landmark_list[4][1], landmark_list[3][1], landmark_list[2][1],  landmark_list[1][1], (landmark_list[4][1] < landmark_list[3][1] < landmark_list[2][1] < landmark_list[1][1]))
-                # print("LANDMARK ", landmark_list[8][1], landmark_list[7][1], landmark_list[6][1],  landmark_list[5][1],  (landmark_list[8][1] < landmark_list[7][1] < landmark_list[6][1] < landmark_list[5][1]) )
-                # print("LANDMARK ", landmark_list[12][1], landmark_list[11][1], landmark_list[10][1],  landmark_list[9][1], (landmark_list[12][1] < landmark_list[11][1] < landmark_list[10][1] < landmark_list[9][1]))
-                # print("LANDMARK ", landmark_list[16][1], landmark_list[15][1], landmark_list[14][1],  landmark_list[13][1], (landmark_list[16][1] < landmark_list[15][1] < landmark_list[14][1] < landmark_list[13][1]))
-                # print("LANDMARK ", landmark_list[20][1], landmark_list[19][1], landmark_list[18][1],  landmark_list[17][1], (landmark_list[20][1] < landmark_list[19][1] < landmark_list[18][1] < landmark_list[17][1]))
+                # add the landmark list to the appropriate hand list based on hand type
+                if hand_type.classification[0].label == 'Left':
+                    left_hand_landmarks = landmark_list
+                elif hand_type.classification[0].label == 'Right':
+                    right_hand_landmarks = landmark_list
 
-                #ROTATION
-                if (landmark_list[8][1] < landmark_list[7][1] < landmark_list[6][1] < landmark_list[5][1]) and \
-                (landmark_list[12][1] < landmark_list[11][1] < landmark_list[10][1] < landmark_list[9][1]):
-                    print("rotate")
-                    XY = np.array([landmark_list[12][0],landmark_list[12][1]])
-                    unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
-                    prevXY = XY
-                    print(unitVector)
+                if len(left_hand_landmarks) == 0 and len(right_hand_landmarks) == 0:
+                    prevDistance = None
+                    distance = prevDistance
+                    toZoom = "#"
+                if len(left_hand_landmarks) != 0:
+                    #ZOOM
+                    if (left_hand_landmarks[8][1] < left_hand_landmarks[7][1] < left_hand_landmarks[6][1] < left_hand_landmarks[5][1]) and \
+                            len(right_hand_landmarks) != 0 and \
+                            (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
+                            not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]) and \
+                            not (left_hand_landmarks[12][1] < left_hand_landmarks[11][1] < left_hand_landmarks[10][1] < left_hand_landmarks[9][1]):
+                        distance = int((np.linalg.norm(np.array(left_hand_landmarks[8]) - np.array(right_hand_landmarks[8]))) * 50)
+                        if prevDistance is None:
+                            prevDistance = distance
+                        else:
+                            if (prevDistance < distance):
+                                toZoom = "Zoom In"
+                            elif (prevDistance > distance):
+                                toZoom = "Zoom Out"
+                            elif (prevDistance == distance):
+                                toZoom = "#"
+                            prevDistance = distance
+                    if ((left_hand_landmarks[4][1] < left_hand_landmarks[3][1] < left_hand_landmarks[2][1] < left_hand_landmarks[1][1]) and \
+                            (left_hand_landmarks[8][1] < left_hand_landmarks[7][1] < left_hand_landmarks[6][1] < left_hand_landmarks[5][1]) and \
+                            (left_hand_landmarks[12][1] < left_hand_landmarks[11][1] < left_hand_landmarks[10][1] < left_hand_landmarks[9][1]) and \
+                            (left_hand_landmarks[16][1] < left_hand_landmarks[15][1] < left_hand_landmarks[14][1] < left_hand_landmarks[13][1]) and \
+                            (left_hand_landmarks[20][1] < left_hand_landmarks[19][1] < left_hand_landmarks[18][1] < left_hand_landmarks[17][1])):
+                        if len(right_hand_landmarks) != 0:
+                            #ROTATION
+                            if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
+                            (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
+                                print("rotate")
+                                XY = np.array([right_hand_landmarks[12][0],right_hand_landmarks[12][1]])
+                                unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                                prevXY = XY
+                                print(unitVector)
 
-                #TRANSLATION
-                if (landmark_list[8][1] < landmark_list[7][1] < landmark_list[6][1] < landmark_list[5][1]) and \
-                    not (landmark_list[12][1] < landmark_list[11][1] < landmark_list[10][1] < landmark_list[9][1]):
-                    print("translate")
-                    XY = np.array([landmark_list[8][0],landmark_list[8][1]])
-                    unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
-                    prevXY = XY
-                    print(unitVector)
-                #ZOOM
+                            #TRANSLATION
+                            if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
+                                not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
+                                print("translate")
+                                XY = np.array([right_hand_landmarks[8][0],right_hand_landmarks[8][1]])
+                                unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                                prevXY = XY
+                                print(unitVector)
+
+                            #PLAY/PAUSE
+                            if (right_hand_landmarks[4][1] < right_hand_landmarks[3][1] < right_hand_landmarks[2][1] < right_hand_landmarks[1][1]) and \
+                            (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
+                            (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]) and \
+                            (right_hand_landmarks[16][1] < right_hand_landmarks[15][1] < right_hand_landmarks[14][1] < right_hand_landmarks[13][1]) and \
+                            (right_hand_landmarks[20][1] < right_hand_landmarks[19][1] < right_hand_landmarks[18][1] < right_hand_landmarks[17][1]):
+                                play = True
+                                # print("OPEN \n")
+                                if(prevPlay != play):
+                                # then send play
+                                    prevPlay = play
+                                    print(play)
+                            else:
+                                # print("CLOSED \n")
+                                play = False
+
+                            # sending play
+                                if(prevPlay != play):
+                                    # then send play
+                                    print(play)
+                                    prevPlay = play
 
 
-
-
-
-                #PLAY/PAUSE
-                if (landmark_list[4][1] < landmark_list[3][1] < landmark_list[2][1] < landmark_list[1][1]) and \
-                (landmark_list[8][1] < landmark_list[7][1] < landmark_list[6][1] < landmark_list[5][1]) and \
-                (landmark_list[12][1] < landmark_list[11][1] < landmark_list[10][1] < landmark_list[9][1]) and \
-                (landmark_list[16][1] < landmark_list[15][1] < landmark_list[14][1] < landmark_list[13][1]) and \
-                (landmark_list[20][1] < landmark_list[19][1] < landmark_list[18][1] < landmark_list[17][1]):
-                    play = True
-                    # print("OPEN \n")
-                    if(prevPlay != play):
-                    # then send play
-                        prevPlay = play
-                        print(play)
-                else:
-                    # print("CLOSED \n")
-                    play = False
-                
-                # sending play
-                    if(prevPlay != play):
-                        # then send play
-                        print(play)
-                        prevPlay = play
-                        
                 # draw the hand landmarks on the image
                 mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-        
-
-
-
 
     return image
 
