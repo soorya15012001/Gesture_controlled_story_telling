@@ -7,28 +7,17 @@
   </head>
   <body>
     <img src="{{ url_for('video_feed') }}">
-    <h2>Receive:</h2>
-    <ul id="dictionaryList"></ul>
 
-    <script type="text/javascript">
+    <script type="text/javascript"> 
         var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
         // Event handler for receiving the dictionary from the backend
         socket.on('dictionary', function(dictionary) {
-            // Clear the dictionary list
-            $('#dictionaryList').empty();
-
-            // Loop through the dictionary and append each key-value pair to the list
-            for (var key in dictionary) {
-                if (dictionary.hasOwnProperty(key)) {
-                    var listItem = $('<li>').text(key + ': ' + dictionary[key]);
-                    $('#dictionaryList').append(listItem);
-                }
-            }
+           console.log(dictionary)
+            
         });
 
         // Send an event to request the dictionary from the backend
         socket.emit('get_dictionary');
     </script>
   </body>
-</html>
