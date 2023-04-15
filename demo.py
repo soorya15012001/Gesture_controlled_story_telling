@@ -38,10 +38,11 @@ play = True
 prevPlay = play
 prevXY = np.array([0.0,0.0])
 XY = prevXY
-unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+unitVectorTranslate = None
+unitVectorRotate = None
 prevDistance = None
 distance = prevDistance
-toZoom = "#"
+toZoom = None
 
 def gesture(image):
     mp_drawing = mp.solutions.drawing_utils
@@ -51,7 +52,8 @@ def gesture(image):
     global play
     global XY
     global prevXY
-    global unitVector
+    global unitVectorTranslate
+    global unitVectorRotate
     global prevDistance
     global distance
     global toZoom
@@ -84,7 +86,7 @@ def gesture(image):
                 if len(left_hand_landmarks) == 0 and len(right_hand_landmarks) == 0:
                     prevDistance = None
                     distance = prevDistance
-                    toZoom = "#"
+                    toZoom = None
                 if len(left_hand_landmarks) != 0:
                     #ZOOM
                     if (left_hand_landmarks[8][1] < left_hand_landmarks[7][1] < left_hand_landmarks[6][1] < left_hand_landmarks[5][1]) and \
@@ -101,7 +103,7 @@ def gesture(image):
                             elif (prevDistance > distance):
                                 toZoom = "Zoom Out"
                             elif (prevDistance == distance):
-                                toZoom = "#"
+                                toZoom = None
                             prevDistance = distance
                     if ((left_hand_landmarks[4][1] < left_hand_landmarks[3][1] < left_hand_landmarks[2][1] < left_hand_landmarks[1][1]) and \
                             (left_hand_landmarks[8][1] < left_hand_landmarks[7][1] < left_hand_landmarks[6][1] < left_hand_landmarks[5][1]) and \
@@ -112,20 +114,20 @@ def gesture(image):
                             #ROTATION
                             if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
                             (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
-                                print("rotate")
+                                #print("rotate")
                                 XY = np.array([right_hand_landmarks[12][0],right_hand_landmarks[12][1]])
-                                unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                                unitVectorRotate = (XY-prevXY)/np.linalg.norm(XY-prevXY)
                                 prevXY = XY
-                                print(unitVector)
+                                #print(unitVectorRotate)
 
                             #TRANSLATION
                             if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
                                 not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
-                                print("translate")
+                                #print("translate")
                                 XY = np.array([right_hand_landmarks[8][0],right_hand_landmarks[8][1]])
-                                unitVector = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                                unitVectorTranslate = (XY-prevXY)/np.linalg.norm(XY-prevXY)
                                 prevXY = XY
-                                print(unitVector)
+                                #print(unitVectorTranslate)
 
                             #PLAY/PAUSE
                             if (right_hand_landmarks[4][1] < right_hand_landmarks[3][1] < right_hand_landmarks[2][1] < right_hand_landmarks[1][1]) and \
@@ -135,25 +137,34 @@ def gesture(image):
                             (right_hand_landmarks[20][1] < right_hand_landmarks[19][1] < right_hand_landmarks[18][1] < right_hand_landmarks[17][1]):
                                 play = True
                                 # print("OPEN \n")
+                                #then send play
                                 if(prevPlay != play):
-                                # then send play
                                     prevPlay = play
                                     print(play)
-                            else:
-                                # print("CLOSED \n")
-                                play = False
 
-                            # sending play
-                                if(prevPlay != play):
-                                    # then send play
-                                    print(play)
-                                    prevPlay = play
+                            elif not(right_hand_landmarks[4][1] < right_hand_landmarks[3][1] < right_hand_landmarks[2][1] < right_hand_landmarks[1][1]) and \
+                                    not(right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
+                                   not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]) and \
+                                   not (right_hand_landmarks[16][1] < right_hand_landmarks[15][1] < right_hand_landmarks[14][1] < right_hand_landmarks[13][1]) and \
+                                   not (right_hand_landmarks[20][1] < right_hand_landmarks[19][1] < right_hand_landmarks[18][1] < right_hand_landmarks[17][1]):
+                                # print("CLOSED \n")
+                                    play = False
+
+                                # sending play
+                                    if(prevPlay != play):
+                                        # then send play
+                                        print(play)
+                                        prevPlay = play
 
 
                 # draw the hand landmarks on the image
                 mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-
-    return image
+    api_packet = {"rotate": unitVectorRotate, "translate": unitVectorTranslate, "zoom": toZoom, "play": play}
+    unitVectorTranslate = None
+    unitVectorRotate = None
+    toZoom = None
+    print(api_packet)
+    return image, api_packet
 
 def detect_motion(frameCount):
     global vs, outputFrame, lock
@@ -161,7 +172,7 @@ def detect_motion(frameCount):
 
     while True:
         image = vs.read()
-        image = gesture(image)
+        image,_ = gesture(image)
 
         with lock:
             outputFrame = image.copy()
@@ -177,7 +188,7 @@ def generate():
             (flag, encodedImage) = cv2.imencode(".jpg", outputFrame)
             if not flag:
                 continue
-        yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + 
+        yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
             bytearray(encodedImage) + b'\r\n')
 
 @app.route("/video_feed")
