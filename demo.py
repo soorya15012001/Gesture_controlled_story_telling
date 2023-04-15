@@ -4,16 +4,26 @@ from imutils.video import VideoStream
 from flask import Response
 from flask import Flask
 from flask import render_template
+from flask_socketio import SocketIO
+import json
 import threading
 import argparse
-import datetime
-import imutils
 import time
 import cv2
-
+import eventlet
+eventlet.monkey_patch()
 outputFrame = None
 lock = threading.Lock()
+from flask_socketio import SocketIO, emit
+
 app = Flask(__name__)
+socketio = SocketIO(app, async_mode='eventlet')
+socketio.init_app(app, cors_allowed_origins="*")
+@socketio.on('api_packet')
+def handle_api_packet(api_packet):
+    emit('api_packet', api_packet, broadcast=True)
+
+
 vs = VideoStream(src=0).start()
 time.sleep(2.0)
 
@@ -116,7 +126,7 @@ def gesture(image):
                             (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
                                 #print("rotate")
                                 XY = np.array([right_hand_landmarks[12][0],right_hand_landmarks[12][1]])
-                                unitVectorRotate = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                                unitVectorRotate = list((XY-prevXY)/np.linalg.norm(XY-prevXY))
                                 prevXY = XY
                                 #print(unitVectorRotate)
 
@@ -125,7 +135,7 @@ def gesture(image):
                                 not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
                                 #print("translate")
                                 XY = np.array([right_hand_landmarks[8][0],right_hand_landmarks[8][1]])
-                                unitVectorTranslate = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                                unitVectorTranslate = list((XY-prevXY)/np.linalg.norm(XY-prevXY))
                                 prevXY = XY
                                 #print(unitVectorTranslate)
 
@@ -167,15 +177,20 @@ def gesture(image):
     return image, api_packet
 
 def detect_motion(frameCount):
+
     global vs, outputFrame, lock
     total = 0
 
     while True:
         image = vs.read()
-        image,_ = gesture(image)
+        image, api_packet = gesture(image)
 
         with lock:
             outputFrame = image.copy()
+
+        socketio.emit('api_packet', json.dumps(api_packet))
+        socketio.sleep(0)
+
 
 
 
