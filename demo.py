@@ -3,30 +3,33 @@ from pyimagesearch.motion_detection.singlemotiondetector import SingleMotionDete
 from imutils.video import VideoStream
 from flask import Response
 from flask import Flask
-from flask import render_template
+from flask import render_template,  session
+from flask_socketio import SocketIO, emit
+from threading import Lock
+
 import threading
 import argparse
 import datetime
 import imutils
 import time
+import json
 import cv2
+
+async_mode=None
 
 outputFrame = None
 lock = threading.Lock()
+thread = None
 app = Flask(__name__)
+socketio = SocketIO(app, async_mode=async_mode)
 vs = VideoStream(src=0).start()
 time.sleep(2.0)
 
 @app.route("/")
 def index():
-    return render_template("index.html")
-
-
+    return render_template("index.html", async_mode=socketio.async_mode)
 
 import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
-import math
 import numpy as np
 
 def trendline(index,data, order=1):
@@ -113,10 +116,11 @@ def gesture(image):
                         if len(right_hand_landmarks) != 0:
                             #ROTATION
                             if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
-                            (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
+                            (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]) and \
+                                    not(right_hand_landmarks[16][1] < right_hand_landmarks[15][1] < right_hand_landmarks[14][1] < right_hand_landmarks[13][1]) :
                                 #print("rotate")
                                 XY = np.array([right_hand_landmarks[12][0],right_hand_landmarks[12][1]])
-                                unitVectorRotate = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                                unitVectorRotate = list((XY-prevXY)/np.linalg.norm(XY-prevXY))
                                 prevXY = XY
                                 #print(unitVectorRotate)
 
@@ -125,7 +129,7 @@ def gesture(image):
                                 not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
                                 #print("translate")
                                 XY = np.array([right_hand_landmarks[8][0],right_hand_landmarks[8][1]])
-                                unitVectorTranslate = (XY-prevXY)/np.linalg.norm(XY-prevXY)
+                                unitVectorTranslate = list((XY-prevXY)/np.linalg.norm(XY-prevXY))
                                 prevXY = XY
                                 #print(unitVectorTranslate)
 
@@ -166,17 +170,25 @@ def gesture(image):
     print(api_packet)
     return image, api_packet
 
-def detect_motion(frameCount):
+def detect_motion():
     global vs, outputFrame, lock
-    total = 0
 
     while True:
+        socketio.sleep(0)
         image = vs.read()
-        image,_ = gesture(image)
+        image,api_packet = gesture(image)
 
         with lock:
             outputFrame = image.copy()
+        socketio.emit('api_packet', json.dumps(api_packet))
 
+
+@socketio.event
+def connect():
+    global thread
+    with lock:
+        if thread is None:
+            thread = socketio.start_background_task(detect_motion)
 
 
 def generate():
@@ -205,10 +217,8 @@ if __name__ == '__main__':
     ap.add_argument("-f", "--frame-count", type=int, default=32,
         help="# of frames used to construct the background model")
     args = vars(ap.parse_args())
-    t = threading.Thread(target=detect_motion, args=(
-        args["frame_count"],))
+    t = threading.Thread(target=detect_motion)
     t.daemon = True
     t.start()
-    app.run(host=args["ip"], port=args["port"], debug=True,
-        threaded=True, use_reloader=False)
+    socketio.run(app, host=args["ip"], port=args["port"], debug=True)
 vs.stop()
