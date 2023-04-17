@@ -1,45 +1,24 @@
 # import the necessary packages
-from pyimagesearch.motion_detection.singlemotiondetector import SingleMotionDetector
 from imutils.video import VideoStream
-from flask import Response
-from flask import Flask
-from flask import render_template,  session
-from threading import Lock
-
 import threading
 import argparse
-import datetime
-import imutils
 import time
-import json
 import cv2
 from flask import Flask, render_template
 from flask_socketio import SocketIO
+import mediapipe as mp
+import numpy as np
+import json
+import base64
+
 
 
 async_mode=None
-
 outputFrame = None
 lock = threading.Lock()
 thread = None
 app = Flask(__name__)
 socketio = SocketIO(app)
-
-vs = VideoStream(src=0).start()
-time.sleep(2.0)
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-import mediapipe as mp
-import numpy as np
-
-def trendline(index,data, order=1):
-    coeffs = np.polyfit(index, list(data), order)
-    slope = coeffs[-2]
-    return float(slope)
-
 play = True
 prevPlay = play
 prevXY = np.array([0.0,0.0])
@@ -49,6 +28,14 @@ unitVectorRotate = None
 prevDistance = None
 distance = prevDistance
 toZoom = None
+
+vs = VideoStream(src=0).start()
+time.sleep(2.0)
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
 
 def gesture(image):
     mp_drawing = mp.solutions.drawing_utils
@@ -176,8 +163,6 @@ def gesture(image):
     return image, api_packet
 
 
-
-@socketio.on('get_dictionary')
 def detect_motion(frameCount):
     global vs, outputFrame, lock
 
@@ -187,28 +172,18 @@ def detect_motion(frameCount):
 
         with lock:
             outputFrame = image.copy()
-            
-        socketio.emit('dictionary', api_packet)
+
+        _, compressed = cv2.imencode(".jpg", outputFrame)
+        outputFrameJPEG = base64.b64encode(compressed).decode('utf-8')
+        socketio.emit('receive_dictionary', json.dumps(api_packet))
+        socketio.sleep(0)
+        socketio.emit('output_frame', outputFrameJPEG)
+        socketio.sleep(0)
 
 
-
-
-def generate():
-    global outputFrame, lock
-    while True:
-        with lock:
-            if outputFrame is None:
-                continue
-            (flag, encodedImage) = cv2.imencode(".jpg", outputFrame)
-            if not flag:
-                continue
-        yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
-            bytearray(encodedImage) + b'\r\n')
-
-@app.route("/video_feed")
-def video_feed():
-    return Response(generate(),
-        mimetype = "multipart/x-mixed-replace; boundary=frame")
+@socketio.on('connect')
+def connect(frameCount):
+     socketio.start_background_task(detect_motion, args["frame_count"])
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser() 
@@ -219,12 +194,6 @@ if __name__ == '__main__':
     ap.add_argument("-f", "--frame-count", type=int, default=32,
         help="# of frames used to construct the background model")
     args = vars(ap.parse_args())
-    t = threading.Thread(target=detect_motion, args=(
-        args["frame_count"],))
-    t.daemon = True
-    t.start()
-    app.run(host=args["ip"], port=args["port"], debug=True,
-        threaded=True, use_reloader=False)
-    # socketio.run(app, host='0.0.0.0', port=8000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=8000, debug=True)
 
 vs.stop()

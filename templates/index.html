@@ -1,23 +1,25 @@
 <html>
   <head>
-    <title>Pi Video Surveillance</title>
+    <title>Gesture Controlled Story Telling</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
 
   </head>
   <body>
-    <img src="{{ url_for('video_feed') }}">
+  <img id="video-stream">
+  <script type="text/javascript">
+      var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+      socket.on('connect', function() {
+          socket.emit('send_data')
+      });
+      socket.on('receive_dictionary', function(data) {
+          console.log(JSON.parse(data))
 
-    <script type="text/javascript"> 
-        var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-
-        // Event handler for receiving the dictionary from the backend
-        socket.on('dictionary', function(dictionary) {
-           console.log(dictionary)
-            
-        });
-
-        // Send an event to request the dictionary from the backend
-        socket.emit('get_dictionary');
-    </script>
+      });
+      socket.on('output_frame', function(outputFrameJPEG) {
+          // Decode the JPEG and set it as the source of the video frame
+          var video_stream = document.getElementById('video-stream');
+          video_stream.src = 'data:image/jpeg;base64,' + outputFrameJPEG;
+      });
+  </script>
   </body>
