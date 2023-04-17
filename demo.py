@@ -110,20 +110,20 @@ def gesture(image):
                             if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
                             (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]) and \
                                     not(right_hand_landmarks[16][1] < right_hand_landmarks[15][1] < right_hand_landmarks[14][1] < right_hand_landmarks[13][1]) :
-                                #print("rotate")
-                                XY = np.array([right_hand_landmarks[12][0],right_hand_landmarks[12][1]])
-                                unitVectorRotate = list((XY-prevXY)/np.linalg.norm(XY-prevXY))
-                                prevXY = XY
-                                #print(unitVectorRotate)
-
-                            #TRANSLATION
-                            if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
-                                not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
                                 #print("translate")
                                 XY = np.array([right_hand_landmarks[8][0],right_hand_landmarks[8][1]])
                                 unitVectorTranslate = list((XY-prevXY)/np.linalg.norm(XY-prevXY))
                                 prevXY = XY
                                 #print(unitVectorTranslate)
+
+                            #TRANSLATION
+                            if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
+                                not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
+                                #print("rotate")
+                                XY = np.array([right_hand_landmarks[12][0],right_hand_landmarks[12][1]])
+                                unitVectorRotate = list((XY-prevXY)/np.linalg.norm(XY-prevXY))
+                                prevXY = XY
+                                #print(unitVectorRotate)
 
                             #PLAY/PAUSE
                             if (right_hand_landmarks[4][1] < right_hand_landmarks[3][1] < right_hand_landmarks[2][1] < right_hand_landmarks[1][1]) and \
