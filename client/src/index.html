@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Gesture</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<style>
+    body, html {
+        height: 100%;
+    }
+    .bg {
+        /* The image used */
+        background-image: url("cat.jpeg");
+        /* background-image: url("http://localhost:8000/video_feed") */
+
+        /* Full height */
+        height: 100%; 
+
+        /* Center and scale the image nicely */
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+</style>
+<body>
+    <div class="bg"></div>
+    <!-- <img class="bg" src="http://localhost:8000/video_feed"/> -->
+    <canvas class="webgl"></canvas>
+    <script type="module" src="./script.js"></script>
+</body>
+</html>
