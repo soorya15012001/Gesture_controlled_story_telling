@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Gesture</title>
     <link rel="stylesheet" href="./style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
 </head>
 <style>
     body, html {
@@ -12,8 +13,7 @@
     }
     .bg {
         /* The image used */
-        background-image: url("cat.jpeg");
-        /* background-image: url("http://localhost:8000/video_feed") */
+        /*background-image: url("cat.jpeg");*/
 
         /* Full height */
         height: 100%; 
@@ -23,10 +23,16 @@
         background-repeat: no-repeat;
         background-size: cover;
     }
+
+    #video-stream {
+        height: 100%;
+    }
+
 </style>
 <body>
-    <div class="bg"></div>
-    <!-- <img class="bg" src="http://localhost:8000/video_feed"/> -->
+    <div class="bg">
+        <img id="video-stream" alt="video"/>
+    </div>
     <canvas class="webgl"></canvas>
     <script type="module" src="./script.js"></script>
 </body>

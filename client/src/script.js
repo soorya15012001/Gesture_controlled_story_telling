@@ -6,6 +6,23 @@ import Stats from 'three/examples/jsm/libs/stats.module'
 import { CollisionGeometry } from './CollisionGeometry';
 
 /**
+ * Socket
+ */
+const socket = io.connect(location.protocol + '//' + document.domain + ':8000' );
+socket.on('connect', function() {
+    socket.emit('send_data')
+});
+socket.on('receive_dictionary', function(data) {
+    console.log(JSON.parse(data))
+
+});
+socket.on('output_frame', function(outputFrameJPEG) {
+    // Decode the JPEG and set it as the source of the video frame
+    var video_stream = document.getElementById('video-stream');
+    video_stream.src = 'data:image/jpeg;base64,' + outputFrameJPEG;
+});
+
+/**
  * Base
  */
 // Debug

@@ -18,7 +18,7 @@ outputFrame = None
 lock = threading.Lock()
 thread = None
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins='*')
 play = True
 prevPlay = play
 prevXY = np.array([0.0,0.0])
