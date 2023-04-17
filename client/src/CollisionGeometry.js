@@ -54,6 +54,6 @@ export class CollisionGeometry {
     }
 
     filename = () =>
-        `data/every1000/canup.${this.step.toString().padStart(4,'0')}.speck`
+        `data/every1000-selected-1-30/canup.${this.step.toString().padStart(4,'0')}.speck`
     
 }
