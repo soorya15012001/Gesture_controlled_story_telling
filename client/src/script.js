@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import * as dat from 'lil-gui'
+import {io} from 'socket.io-client'
 import Stats from 'three/examples/jsm/libs/stats.module'
 
 import { CollisionGeometry } from './CollisionGeometry';
@@ -9,21 +10,26 @@ import { zoomIn, zoomOut } from "./gestures";
 /**
  * Socket
  */
-const socket = io.connect(location.protocol + '//' + document.domain + ':8000' );
-socket.on('connect', function() {
-    socket.emit('send_data')
-});
-socket.on('receive_dictionary', function(data) {
-    const resp = JSON.parse(data)
-    console.log(resp)
-    if (resp['zoom'] === "Zoom In") zoomIn(canvas);
-    else if(resp['zoom'] === "Zoom Out") zoomOut(canvas);
-});
-socket.on('output_frame', function(outputFrameJPEG) {
-    // Decode the JPEG and set it as the source of the video frame
-    var video_stream = document.getElementById('video-stream');
-    video_stream.src = 'data:image/jpeg;base64,' + outputFrameJPEG;
-});
+
+function connect() {
+    const socket = io.connect(location.protocol + '//' + document.domain + ':8000' );
+    socket.on('connect', function() {
+        socket.emit('send_data')
+    });
+    socket.on('receive_dictionary', function(data) {
+        const resp = JSON.parse(data)
+        console.log(resp)
+        if (resp['zoom'] === "Zoom In") zoomIn(canvas);
+        else if(resp['zoom'] === "Zoom Out") zoomOut(canvas);
+    });
+    socket.on('output_frame', function(outputFrameJPEG) {
+        // Decode the JPEG and set it as the source of the video frame
+        var video_stream = document.getElementById('video-stream');
+        video_stream.src = 'data:image/jpeg;base64,' + outputFrameJPEG;
+    });
+}
+
+// connect()
 
 /**
  * Base
@@ -76,42 +82,6 @@ camera.position.z = parameters.cameraZ
 /**
  * Geometry
  */
-
-// let count = 0;
-// let data = [];
-
-// fetch('data/every1000-selected/canup.0221.speck')
-//     .then(resp => resp.text())
-//     .then(data => {
-//         data = data.split("\n").slice(3,-1)
-//         count = data.length;
-
-//         const geometry = new THREE.BufferGeometry()
-
-//         const positions = new Float32Array(count * 3)
-
-//         for(let i = 0; i < count; i++)
-//         {
-//             const [x, z, y, d] = data[i].split(" ")
-
-//             const i3 = i * 3
-//             positions[i3    ] = x
-//             positions[i3 + 1] = y
-//             positions[i3 + 2] = z
-//         }
-
-//         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-
-//         const material = new THREE.PointsMaterial({
-//             size: 0.1,
-//             sizeAttenuation: true,
-//             depthWrite: false,
-//             blending: THREE.AdditiveBlending
-//         })
-
-//         const points = new THREE.Points(geometry, material)
-//         scene.add(points)
-//     })
 
 const collision = await new CollisionGeometry()
 scene.add(collision.points)
