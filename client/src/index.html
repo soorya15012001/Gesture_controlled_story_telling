@@ -7,33 +7,12 @@
     <link rel="stylesheet" href="./style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
 </head>
-<style>
-    body, html {
-        height: 100%;
-    }
-    .bg {
-        /* The image used */
-        /*background-image: url("cat.jpeg");*/
-
-        /* Full height */
-        height: 100%; 
-
-        /* Center and scale the image nicely */
-        background-position: center;
-        background-repeat: no-repeat;
-        background-size: cover;
-    }
-
-    #video-stream {
-        height: 100%;
-    }
-
-</style>
 <body>
     <div class="bg">
         <img id="video-stream" alt="video"/>
     </div>
     <canvas class="webgl"></canvas>
+    <img id="playback" src="pause.svg" alt="playback button"/>
     <script type="module" src="./script.js"></script>
 </body>
 </html>
