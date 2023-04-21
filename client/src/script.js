@@ -7,6 +7,15 @@ import Stats from 'three/examples/jsm/libs/stats.module'
 import { CollisionGeometry } from './CollisionGeometry';
 import { zoomIn, zoomOut } from "./gestures";
 
+// Playback
+const playbackIcon = document.querySelector('#playback')
+window.play = false
+
+playbackIcon.onclick = () => {
+    play = !play
+    playbackIcon.src = play ? "pause.svg" : "play.svg"
+}
+
 /**
  * Socket
  */
@@ -18,18 +27,16 @@ function connect() {
     });
     socket.on('receive_dictionary', function(data) {
         const resp = JSON.parse(data)
-        console.log(resp)
-        if (resp['zoom'] === "Zoom In") zoomIn(canvas);
-        else if(resp['zoom'] === "Zoom Out") zoomOut(canvas);
+        if (resp['zoom'] === "Zoom In") zoomIn(canvas)
+        else if (resp['zoom'] === "Zoom Out") zoomOut(canvas)
+        else if (resp['play'] !== window.play) playbackIcon.dispatchEvent(new Event('click'))
     });
-    socket.on('output_frame', function(outputFrameJPEG) {
-        // Decode the JPEG and set it as the source of the video frame
-        var video_stream = document.getElementById('video-stream');
-        video_stream.src = 'data:image/jpeg;base64,' + outputFrameJPEG;
-    });
+    // socket.on('output_frame', function(outputFrameJPEG) {
+    //     // Decode the JPEG and set it as the source of the video frame
+    //     var video_stream = document.getElementById('video-stream');
+    //     video_stream.src = 'data:image/jpeg;base64,' + outputFrameJPEG;
+    // });
 }
-
-// connect()
 
 /**
  * Base
@@ -52,7 +59,6 @@ const sizes = {
     width: window.innerWidth,
     height: window.innerHeight
 }
-
 
 /**
  * Camera
@@ -79,12 +85,6 @@ camera.position.x = parameters.cameraX
 camera.position.y = parameters.cameraY
 camera.position.z = parameters.cameraZ
 
-/**
- * Geometry
- */
-
-const collision = await new CollisionGeometry()
-scene.add(collision.points)
 
 window.addEventListener('resize', () =>
 {
@@ -119,6 +119,16 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.setClearColor( 0x000000, 0.8 ); // the default
 
 /**
+ * Geometry
+ */
+
+const collision = await new CollisionGeometry()
+scene.add(collision.points)
+
+
+connect()
+
+/**
  * Animate
  */
 const clock = new THREE.Clock()
@@ -131,7 +141,8 @@ const tick = async () =>
     controls.update()
 
     // Next frame
-    // await collision.loadPositions()
+    if (play)
+        await collision.next()
 
     // Render
     renderer.render(scene, camera)
