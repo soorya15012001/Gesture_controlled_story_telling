@@ -21,7 +21,7 @@ playbackIcon.onclick = () => {
  */
 
 function connect() {
-    const socket = io.connect(location.protocol + '//' + document.domain + ':8000' );
+    const socket = io.connect(location.protocol + '//' + document.domain + ':8000', { transports:["websocket"]} );
     socket.on('connect', function() {
         socket.emit('send_data')
     });
@@ -29,13 +29,13 @@ function connect() {
         const resp = JSON.parse(data)
         if (resp['zoom'] === "Zoom In") zoomIn(canvas)
         else if (resp['zoom'] === "Zoom Out") zoomOut(canvas)
-        else if (resp['play'] !== window.play) playbackIcon.dispatchEvent(new Event('click'))
+        else if (resp['play'] !== null && resp['play'] !== window.play) playbackIcon.dispatchEvent(new Event('click'))
     });
-    // socket.on('output_frame', function(outputFrameJPEG) {
-    //     // Decode the JPEG and set it as the source of the video frame
-    //     var video_stream = document.getElementById('video-stream');
-    //     video_stream.src = 'data:image/jpeg;base64,' + outputFrameJPEG;
-    // });
+    socket.on('output_frame', function(outputFrameJPEG) {
+        // Decode the JPEG and set it as the source of the video frame
+        var video_stream = document.getElementById('video-stream');
+        video_stream.src = 'data:image/jpeg;base64,' + outputFrameJPEG;
+    });
 }
 
 /**
@@ -122,11 +122,8 @@ renderer.setClearColor( 0x000000, 0.8 ); // the default
  * Geometry
  */
 
-const collision = await new CollisionGeometry()
+const collision = await new CollisionGeometry(connect)
 scene.add(collision.points)
-
-
-connect()
 
 /**
  * Animate

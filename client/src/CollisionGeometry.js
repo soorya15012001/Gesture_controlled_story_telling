@@ -1,11 +1,11 @@
 import * as THREE from 'three'
 
 export class CollisionGeometry {
-    constructor() {
-        return this.init();
+    constructor(callback) {
+        return this.init(callback);
     }
 
-    async init() {
+    async init(callback) {
         this.step = 0;
         this.geometry = new THREE.BufferGeometry()
         this.material = new THREE.PointsMaterial({
@@ -27,11 +27,11 @@ export class CollisionGeometry {
         })
         this.points = new THREE.Points(this.geometry, this.material)
         this.frames = 3525
-        this.loadPositions()
+        this.loadPositions(callback)
         return this
     }
 
-    loadPositions() {
+    loadPositions(callback) {
         fetch(`http://localhost:3000/data/1`)
             .then(resp => resp.json())
             .then(data => {
@@ -51,7 +51,7 @@ export class CollisionGeometry {
                       this.positions = data.position
                   })
             })
-
+            .then(callback)
     }
 
     next() {

@@ -12,15 +12,13 @@ import json
 import base64
 
 
-
 async_mode=None
 outputFrame = None
 lock = threading.Lock()
 thread = None
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins='*')
-play = False
-prevPlay = play
+play, prevPlay, currPlay = None, False, False
 prevXY = np.array([0.0,0.0])
 XY = prevXY
 unitVectorTranslate = None
@@ -131,12 +129,13 @@ def gesture(image):
                             (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]) and \
                             (right_hand_landmarks[16][1] < right_hand_landmarks[15][1] < right_hand_landmarks[14][1] < right_hand_landmarks[13][1]) and \
                             (right_hand_landmarks[20][1] < right_hand_landmarks[19][1] < right_hand_landmarks[18][1] < right_hand_landmarks[17][1]):
-                                play = True
+                                currPlay = True
                                 # print("OPEN \n")
                                 #then send play
-                                if(prevPlay != play):
-                                    prevPlay = play
+                                if(prevPlay != currPlay):
+                                    prevPlay = currPlay
                                     print(play)
+                                    play = currPlay
 
                             elif not(right_hand_landmarks[4][1] < right_hand_landmarks[3][1] < right_hand_landmarks[2][1] < right_hand_landmarks[1][1]) and \
                                     not(right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
@@ -144,13 +143,14 @@ def gesture(image):
                                    not (right_hand_landmarks[16][1] < right_hand_landmarks[15][1] < right_hand_landmarks[14][1] < right_hand_landmarks[13][1]) and \
                                    not (right_hand_landmarks[20][1] < right_hand_landmarks[19][1] < right_hand_landmarks[18][1] < right_hand_landmarks[17][1]):
                                 # print("CLOSED \n")
-                                    play = False
+                                    currPlay = False
 
                                 # sending play
-                                    if(prevPlay != play):
+                                    if(prevPlay != currPlay):
                                         # then send play
                                         print(play)
-                                        prevPlay = play
+                                        prevPlay = currPlay
+                                        play = currPlay
 
 
                 # draw the hand landmarks on the image
@@ -159,8 +159,12 @@ def gesture(image):
     unitVectorTranslate = None
     unitVectorRotate = None
     toZoom = None
-    print(api_packet)
-    return image, api_packet
+    play = None
+    for key in api_packet:
+        if api_packet[key] != None:
+            print(api_packet)
+            return image, api_packet
+    return image, None
 
 
 def detect_motion(frameCount):
@@ -175,8 +179,11 @@ def detect_motion(frameCount):
 
         _, compressed = cv2.imencode(".jpg", outputFrame)
         outputFrameJPEG = base64.b64encode(compressed).decode('utf-8')
-        socketio.emit('receive_dictionary', json.dumps(api_packet))
-        socketio.sleep(0)
+        if api_packet:
+            if api_packet['rotate']:
+                print(XY)
+            socketio.emit('receive_dictionary', json.dumps(api_packet))
+            socketio.sleep(0)
         socketio.emit('output_frame', outputFrameJPEG)
         socketio.sleep(0)
 
