@@ -26,7 +26,7 @@ export class CollisionGeometry {
             blending: THREE.AdditiveBlending
         })
         this.points = new THREE.Points(this.geometry, this.material)
-        this.frames = 3525
+        this.frames = 1
         this.loadPositions(callback)
         return this
     }
@@ -49,6 +49,7 @@ export class CollisionGeometry {
                   .then(resp => resp.json())
                   .then(data => {
                       this.positions = data.position
+                      this.frames = this.positions.length
                   })
             })
             .then(callback)
