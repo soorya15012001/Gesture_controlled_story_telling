@@ -26,6 +26,7 @@ unitVectorRotate = None
 prevDistance = None
 distance = prevDistance
 toZoom = None
+rotationCoordinate, rotating = None, False
 
 vs = VideoStream(src=0).start()
 time.sleep(2.0)
@@ -48,6 +49,7 @@ def gesture(image):
     global prevDistance
     global distance
     global toZoom
+    global rotationCoordinate, rotating
 
     with mp_hands.Hands( min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
         image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
@@ -104,7 +106,7 @@ def gesture(image):
                             (left_hand_landmarks[16][1] < left_hand_landmarks[15][1] < left_hand_landmarks[14][1] < left_hand_landmarks[13][1]) and \
                             (left_hand_landmarks[20][1] < left_hand_landmarks[19][1] < left_hand_landmarks[18][1] < left_hand_landmarks[17][1])):
                         if len(right_hand_landmarks) != 0:
-                            #ROTATION
+                            #TRANSLATION
                             if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
                             (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]) and \
                                     not(right_hand_landmarks[16][1] < right_hand_landmarks[15][1] < right_hand_landmarks[14][1] < right_hand_landmarks[13][1]) :
@@ -114,13 +116,15 @@ def gesture(image):
                                 prevXY = XY
                                 #print(unitVectorTranslate)
 
-                            #TRANSLATION
+                            #ROTATION
                             if (right_hand_landmarks[8][1] < right_hand_landmarks[7][1] < right_hand_landmarks[6][1] < right_hand_landmarks[5][1]) and \
                                 not (right_hand_landmarks[12][1] < right_hand_landmarks[11][1] < right_hand_landmarks[10][1] < right_hand_landmarks[9][1]):
                                 #print("rotate")
                                 XY = np.array([right_hand_landmarks[12][0],right_hand_landmarks[12][1]])
                                 unitVectorRotate = list((XY-prevXY)/np.linalg.norm(XY-prevXY))
                                 prevXY = XY
+                                rotationCoordinate = [right_hand_landmarks[8][0],right_hand_landmarks[8][1]]
+                                rotating = True
                                 #print(unitVectorRotate)
 
                             #PLAY/PAUSE
@@ -155,14 +159,17 @@ def gesture(image):
 
                 # draw the hand landmarks on the image
                 mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-    api_packet = {"rotate": unitVectorRotate, "translate": unitVectorTranslate, "zoom": toZoom, "play": play}
+    api_packet = {"rotate": rotationCoordinate, "translate": unitVectorTranslate, "zoom": toZoom, "play": play}
     unitVectorTranslate = None
     unitVectorRotate = None
+    rotationCoordinate = None
     toZoom = None
     play = None
+    if rotating and not api_packet['rotate']:
+        rotating = False
+        return image, api_packet
     for key in api_packet:
         if api_packet[key] != None:
-            print(api_packet)
             return image, api_packet
     return image, None
 
@@ -180,8 +187,7 @@ def detect_motion(frameCount):
         _, compressed = cv2.imencode(".jpg", outputFrame)
         outputFrameJPEG = base64.b64encode(compressed).decode('utf-8')
         if api_packet:
-            if api_packet['rotate']:
-                print(XY)
+            print(api_packet)
             socketio.emit('receive_dictionary', json.dumps(api_packet))
             socketio.sleep(0)
         socketio.emit('output_frame', outputFrameJPEG)

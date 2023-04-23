@@ -5,21 +5,18 @@ import {io} from 'socket.io-client'
 import Stats from 'three/examples/jsm/libs/stats.module'
 
 import { CollisionGeometry } from './CollisionGeometry';
-import { zoomIn, zoomOut } from "./gestures";
+import { zoomIn, zoomOut, rotate, translate } from "./gestures";
 
-// Playback
+/**
+ * Panel buttons
+ * */
+
 const playbackIcon = document.querySelector('#playback')
-window.play = false
-
-playbackIcon.onclick = () => {
-    play = !play
-    playbackIcon.src = play ? "pause.svg" : "play.svg"
-}
+const resetIcon = document.querySelector('#reset')
 
 /**
  * Socket
  */
-
 function connect() {
     const socket = io.connect(location.protocol + '//' + document.domain + ':8000', { transports:["websocket"]} );
     socket.on('connect', function() {
@@ -29,7 +26,40 @@ function connect() {
         const resp = JSON.parse(data)
         if (resp['zoom'] === "Zoom In") zoomIn(canvas)
         else if (resp['zoom'] === "Zoom Out") zoomOut(canvas)
-        else if (resp['play'] !== null && resp['play'] !== window.play) playbackIcon.dispatchEvent(new Event('click'))
+        else if (resp['rotate'] !== null) {
+            if (window.rotation)
+                rotate(canvas, {
+                    x: resp['rotate'][0],
+                    y: resp['rotate'][1],
+                    name: "pointermove"})
+            else {
+                rotate(canvas, {
+                    x: resp['rotate'][0],
+                    y: resp['rotate'][1],
+                    name: "pointerdown"})
+            }
+            window.rotation = true
+            window.translate = false
+        }
+        else if (resp['translate'] !== null) {
+            if (window.translate)
+                translate(canvas, {
+                    x: resp['translate'][0],
+                    y: resp['translate'][1],
+                    name: "pointermove"})
+            else {
+                translate(canvas, {
+                    x: resp['translate'][0],
+                    y: resp['translate'][1],
+                    name: "pointerdown"})
+            }
+            window.rotation = false
+            window.translate = true
+        }
+        else if (resp['play'] !== null && resp['play'] !== window.play)
+            playbackIcon.dispatchEvent(new Event('click'))
+
+        if (resp['rotate'] === null) window.rotation = false;
     });
     socket.on('output_frame', function(outputFrameJPEG) {
         // Decode the JPEG and set it as the source of the video frame
@@ -75,9 +105,10 @@ scene.add( axesHelper );
  * Control
  */
 const parameters = {}
-parameters.cameraX = -10
-parameters.cameraY = 20
-parameters.cameraZ = 30
+const originalCameraPos = [-10,20,30]
+parameters.cameraX = originalCameraPos[0]
+parameters.cameraY = originalCameraPos[1]
+parameters.cameraZ = originalCameraPos[2]
 gui.add(parameters, 'cameraX').min(-50).max(50).step(0.1).onChange(() => camera.position.x = parameters.cameraX)
 gui.add(parameters, 'cameraY').min(-50).max(50).step(0.1).onChange(() => camera.position.y = parameters.cameraY)
 gui.add(parameters, 'cameraZ').min(-50).max(50).step(0.1).onChange(() => camera.position.z = parameters.cameraZ)
@@ -102,10 +133,24 @@ window.addEventListener('resize', () =>
 })
 
 
-
-// Controls
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
+controls.rotateSpeed = 0.5
+controls.listenToKeyEvents( window )
+
+// Panel
+
+window.play = false
+window.rotation = false
+
+playbackIcon.onclick = () => {
+    play = !play
+    playbackIcon.src = play ? "pause.svg" : "play.svg"
+}
+
+resetIcon.onclick = controls.reset
+
+
 
 /**
  * Renderer

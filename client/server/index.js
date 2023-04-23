@@ -20,7 +20,7 @@ app.get("/data/:frame", cors(corsOptions), (req, res) => {
 
 app.get("/data", cors(corsOptions), (req, res) => {
   const positions = [];
-  for (let i=1; i<3526; i++) {
+  for (let i=1; i<100; i++) {
     const frame = i.toString().padStart(4,'0')
     const data = fs.readFileSync(`static/data/every1000/canup.${frame}.speck`, "utf-8");
     positions.push(data.split("\n").slice(3,-1).map(d => d.split(" ").map(Number)));
