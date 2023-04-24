@@ -136,6 +136,7 @@ window.addEventListener('resize', () =>
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
 controls.rotateSpeed = 0.5
+controls.panSpeed = 0.5
 controls.listenToKeyEvents( window )
 
 // Panel

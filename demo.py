@@ -27,6 +27,7 @@ prevDistance = None
 distance = prevDistance
 toZoom = None
 rotationCoordinate, rotating = None, False
+translationCoordinate, translating = None, False
 
 vs = VideoStream(src=0).start()
 time.sleep(2.0)
@@ -50,6 +51,7 @@ def gesture(image):
     global distance
     global toZoom
     global rotationCoordinate, rotating
+    global translationCoordinate, translating
 
     with mp_hands.Hands( min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
         image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
@@ -114,6 +116,8 @@ def gesture(image):
                                 XY = np.array([right_hand_landmarks[8][0],right_hand_landmarks[8][1]])
                                 unitVectorTranslate = list((XY-prevXY)/np.linalg.norm(XY-prevXY))
                                 prevXY = XY
+                                translationCoordinate = [right_hand_landmarks[8][0],right_hand_landmarks[8][1]]
+                                translating = True
                                 #print(unitVectorTranslate)
 
                             #ROTATION
@@ -159,12 +163,16 @@ def gesture(image):
 
                 # draw the hand landmarks on the image
                 mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-    api_packet = {"rotate": rotationCoordinate, "translate": unitVectorTranslate, "zoom": toZoom, "play": play}
+    api_packet = {"rotate": rotationCoordinate, "translate": translationCoordinate, "zoom": toZoom, "play": play}
     unitVectorTranslate = None
     unitVectorRotate = None
     rotationCoordinate = None
+    translationCoordinate = None
     toZoom = None
     play = None
+    if translating and not api_packet['translate']:
+        translating = False
+        return image, api_packet
     if rotating and not api_packet['rotate']:
         rotating = False
         return image, api_packet
