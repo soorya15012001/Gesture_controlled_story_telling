@@ -59,7 +59,18 @@ function connect() {
         else if (resp['play'] !== null && resp['play'] !== window.play)
             playbackIcon.dispatchEvent(new Event('click'))
 
-        if (resp['rotate'] === null) window.rotation = false;
+        if (resp['rotate'] === null) {
+            if (window.rotation === true) {
+                window.rotation = false;
+                canvas.dispatchEvent(new Event('pointerup'))
+            }
+        }
+        if (resp['translate'] === null) {
+            if (window.translate === true) {
+                window.translate = false;
+                canvas.dispatchEvent(new Event('pointerup'))
+            }
+        }
     });
     socket.on('output_frame', function(outputFrameJPEG) {
         // Decode the JPEG and set it as the source of the video frame
